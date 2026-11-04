@@ -1,0 +1,52 @@
+name: Unpack and Build APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Unpack project zip
+        run: |
+          if [ -f "nexus-device.zip" ]; then
+            echo "Found nexus-device.zip, unpack..."
+            mkdir -p temp_extracted
+            unzip -q nexus-device.zip -d temp_extracted
+            if [ -d "temp_extracted/nexus-device" ]; then
+              cp -a temp_extracted/nexus-device/. ./
+            else
+              cp -a temp_extracted/. ./
+            fi
+            rm -rf temp_extracted
+          fi
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
